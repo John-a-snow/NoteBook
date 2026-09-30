@@ -1,11 +1,7 @@
 export type AnnotationType = 'note' | 'highlight' | 'question' | 'bookmark';
-
 export type ThemeMode = 'light' | 'dark';
-
 export type FontFamily = 'serif' | 'sans' | 'mono';
-
 export type FontSize = 'sm' | 'md' | 'lg' | 'xl';
-
 export type ActiveView = 'home' | 'read' | 'review' | 'library';
 
 export interface DocSection {

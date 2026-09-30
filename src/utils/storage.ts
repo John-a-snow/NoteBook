@@ -1,137 +1,42 @@
 import type { Document, Annotation, UserPrefs } from '../types';
 
-const KEYS = {
-  DOCS: 'bookmark_docs_v3',
-  ACTIVE: 'bookmark_active_id_v3',
-  ANNOTS: 'bookmark_annots_v3',
-  PREFS: 'bookmark_prefs_v3'
-};
+const KEYS = { DOCS: 'bookmark_docs_v3', ACTIVE: 'bookmark_active_id_v3', ANNOTS: 'bookmark_annots_v3', PREFS: 'bookmark_prefs_v3' };
+export const DEFAULT_PREFS: UserPrefs = { theme: 'light', fontFamily: 'serif', fontSize: 'md', zenMode: false, showAllMarginAnnotations: false };
 
-export const DEFAULT_PREFS: UserPrefs = {
-  theme: 'light',
-  fontFamily: 'serif',
-  fontSize: 'md',
-  zenMode: false,
-  showAllMarginAnnotations: false
-};
+const readJSON = <T,>(k: string, fb: T): T => { try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : fb; } catch { return fb; } };
+const writeJSON = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 
-const readJSON = <T,>(key: string, fallback: T): T => {
-  try {
-    const value = localStorage.getItem(key);
-    return value ? JSON.parse(value) : fallback;
-  } catch {
-    return fallback;
-  }
-};
+export const loadDocuments = (): Document[] => { const d = readJSON<Document[]>(KEYS.DOCS, []); return Array.isArray(d) ? d : []; };
+export const saveDocuments = (docs: Document[]) => writeJSON(KEYS.DOCS, docs);
+export const loadActiveDocId = (defId: string): string => { try { return localStorage.getItem(KEYS.ACTIVE) || defId; } catch { return defId; } };
+export const saveActiveDocId = (id: string) => { try { localStorage.setItem(KEYS.ACTIVE, id); } catch {} };
+export const loadAnnotations = (): Annotation[] => { const a = readJSON<Annotation[]>(KEYS.ANNOTS, []); return Array.isArray(a) ? a : []; };
+export const saveAnnotations = (a: Annotation[]) => writeJSON(KEYS.ANNOTS, a);
+export const loadUserPrefs = (): UserPrefs => ({ ...DEFAULT_PREFS, ...readJSON<Partial<UserPrefs>>(KEYS.PREFS, {}) });
+export const saveUserPrefs = (p: UserPrefs) => writeJSON(KEYS.PREFS, p);
 
-const writeJSON = (key: string, value: unknown) => {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
-};
-
-export const loadDocuments = (): Document[] => {
-  const documents = readJSON<Document[]>(KEYS.DOCS, []);
-  return Array.isArray(documents) ? documents : [];
-};
-
-export const saveDocuments = (documents: Document[]) =>
-  writeJSON(KEYS.DOCS, documents);
-
-export const loadActiveDocId = (defaultId: string): string => {
-  try {
-    return localStorage.getItem(KEYS.ACTIVE) || defaultId;
-  } catch {
-    return defaultId;
-  }
-};
-
-export const saveActiveDocId = (id: string) => {
-  try {
-    localStorage.setItem(KEYS.ACTIVE, id);
-  } catch {}
-};
-
-export const loadAnnotations = (): Annotation[] => {
-  const annotations = readJSON<Annotation[]>(KEYS.ANNOTS, []);
-  return Array.isArray(annotations) ? annotations : [];
-};
-
-export const saveAnnotations = (annotations: Annotation[]) =>
-  writeJSON(KEYS.ANNOTS, annotations);
-
-export const loadUserPrefs = (): UserPrefs => ({
-  ...DEFAULT_PREFS,
-  ...readJSON<Partial<UserPrefs>>(KEYS.PREFS, {})
-});
-
-export const saveUserPrefs = (prefs: UserPrefs) =>
-  writeJSON(KEYS.PREFS, prefs);
-
-export function parsePastedTextToDocument(
-  title: string,
-  author: string,
-  category: string,
-  rawText: string
-): Document {
-  const sections: {
-    id: string;
-    title: string;
-    content: string;
-    paragraphs: string[];
-  }[] = [];
-
-  let currentTitle = 'Section 1';
-  let currentParagraphs: string[] = [];
-  let index = 1;
-
+export function parsePastedTextToDocument(title: string, author: string, category: string, rawText: string): Document {
+  const sections: { id: string; title: string; content: string; paragraphs: string[] }[] = [];
+  let curTitle = 'Section 1', curParas: string[] = [], idx = 1;
   for (const raw of rawText.split('\n')) {
     const line = raw.trim();
-
     if (!line) continue;
-
     if (/^(#|Chapter|Section|Part )/i.test(line)) {
-      if (currentParagraphs.length) {
-        sections.push({
-          id: `sec-${Date.now()}-${index++}`,
-          title: currentTitle,
-          content: currentParagraphs.join('\n\n'),
-          paragraphs: [...currentParagraphs]
-        });
-
-        currentParagraphs = [];
+      if (curParas.length) {
+        sections.push({ id: `sec-${Date.now()}-${idx++}`, title: curTitle, content: curParas.join('\n\n'), paragraphs: [...curParas] });
+        curParas = [];
       }
-
-      currentTitle =
-        line.replace(/^#+\s*/, '') || `Section ${index}`;
-    } else {
-      currentParagraphs.push(line);
-    }
+      curTitle = line.replace(/^#+\s*/, '') || `Section ${idx}`;
+    } else curParas.push(line);
   }
-
-  if (currentParagraphs.length || !sections.length) {
-    const paragraphs = currentParagraphs.length
-      ? currentParagraphs
-      : ['No content provided.'];
-
-    sections.push({
-      id: `sec-${Date.now()}-${index}`,
-      title: currentTitle,
-      content: paragraphs.join('\n\n'),
-      paragraphs
-    });
+  if (curParas.length || !sections.length) {
+    const paras = curParas.length ? curParas : ['No content provided.'];
+    sections.push({ id: `sec-${Date.now()}-${idx}`, title: curTitle, content: paras.join('\n\n'), paragraphs: paras });
   }
-
   const words = rawText.split(/\s+/).filter(Boolean).length;
-
   return {
-    id: `doc-${Date.now()}`,
-    title: title.trim() || 'Untitled Reading',
-    author: author.trim() || 'Anonymous',
-    category: category.trim() || 'Article',
-    readTimeMinutes: Math.max(1, Math.ceil(words / 200)),
-    sections,
-    lastReadSectionId: sections[0].id,
-    createdAt: new Date().toISOString()
+    id: `doc-${Date.now()}`, title: title.trim() || 'Untitled Reading', author: author.trim() || 'Anonymous',
+    category: category.trim() || 'Article', readTimeMinutes: Math.max(1, Math.ceil(words / 200)),
+    sections, lastReadSectionId: sections[0].id, createdAt: new Date().toISOString()
   };
 }
