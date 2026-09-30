@@ -103,3 +103,86 @@ export const Library: React.FC<LibraryProps> = ({
           <span>BACK</span>
         </div>
       </div>
+
+      <div className="minecraft-divider" />
+
+      {documents.length === 0 ? (
+        <div className="empty-state">
+          <BookOpen size={32} />
+
+          <div className="empty-state-title">
+            NO DOCUMENTS
+          </div>
+
+          <div className="empty-state-text">
+            There are no documents available in your library yet.
+          </div>
+        </div>
+      ) : (
+        <div className="library-grid">
+          {documents.map((document, index) => (
+            <button
+              key={document.id}
+              type="button"
+              tabIndex={-1}
+              className={`library-card ${
+                selectedIndex === index ? 'is-selected' : ''
+              }`}
+              onClick={() => {
+                setSelectedIndex(index);
+                onOpenDocument(document);
+              }}
+            >
+              <div className="library-card-icon">
+                <FileText size={24} />
+              </div>
+
+              <div className="library-card-title">
+                {document.title}
+              </div>
+
+              <div className="library-card-author">
+                {document.author}
+              </div>
+
+              <div className="library-card-meta">
+                <span>
+                  <Clock size={13} />
+                </span>
+
+                <span>
+                  {document.readTimeMinutes} MIN
+                </span>
+              </div>
+
+              {selectedIndex === index && (
+                <div className="library-card-selection">
+                  <span className="keyboard-key">ENTER</span>
+                  <span>OPEN</span>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="library-bottom-hud">
+        <span>
+          <span className="keyboard-key">←</span>
+          <span className="keyboard-key">→</span>
+          NAVIGATE
+        </span>
+
+        <span>
+          <span className="keyboard-key">ENTER</span>
+          OPEN
+        </span>
+
+        <span>
+          <span className="keyboard-key">ESC</span>
+          BACK
+        </span>
+      </div>
+    </main>
+  );
+};
