@@ -1,41 +1,103 @@
-import { useEffect, useState } from "react";
-import "./App.css";
-import type { Annotation, AnnotationType, Document, UserPrefs } from "./types";
-import { loadAnnotations, loadDocuments, loadUserPrefs, saveAnnotations, saveDocuments, saveUserPrefs } from "./utils/storage";
+import { useEffect, useMemo, useState } from "react";
+import type {
+  ActiveView,
+  Annotation,
+  AnnotationType,
+  Document,
+  UserPrefs,
+} from "./types";
 import { HomeHero } from "./components/HomeHero";
-import { Header } from "./components/Header";
 import { Workspace } from "./components/Workspace";
 import { Library } from "./components/Library";
 import { ReviewMode } from "./components/ReviewMode";
-import { Modal } from "./components/Modal";
+import {
+  AboutModal,
+  NewDocumentModal,
+  ShortcutsModal,
+} from "./components/Modal";
+import {
+  DEFAULT_PREFS,
+  loadAnnotations,
+  loadDocuments,
+  loadUserPrefs,
+  saveAnnotations,
+  saveDocuments,
+  saveUserPrefs,
+} from "./utils/storage";
 
-const defaultPrefs: UserPrefs = {
-  theme: "light",
-  fontFamily: "serif",
-  fontSize: "md",
-  zenMode: false,
-  showAllMarginAnnotations: false
+const sampleDocument: Document = {
+  id: "sample-document",
+  title: "The Art of Reading",
+  author: "NOTEBOOK",
+  category: "READING",
+  readTimeMinutes: 5,
+  createdAt: new Date().toISOString(),
+  isSample: true,
+  lastReadSectionId: "section-1",
+  sections: [
+    {
+      id: "section-1",
+      title: "BEGINNING",
+      content:
+        "Reading is more than moving through words. It is a way of slowing down and giving attention to an idea.",
+      paragraphs: [
+        "Reading is more than moving through words. It is a way of slowing down and giving attention to an idea.",
+        "A good reader does not simply collect information. They question it, connect it with what they already know, and notice the details that matter."
+      ],
+    },
+    {
+      id: "section-2",
+      title: "THINKING",
+      content:
+        "The most useful ideas are often the ones that make us stop and think.",
+      paragraphs: [
+        "The most useful ideas are often the ones that make us stop and think.",
+        "Writing a short note beside an important passage can turn passive reading into an active conversation with the text."
+      ],
+    },
+    {
+      id: "section-3",
+      title: "REMEMBERING",
+      content:
+        "Annotations create small landmarks that make it easier to return to an idea later.",
+      paragraphs: [
+        "Annotations create small landmarks that make it easier to return to an idea later.",
+        "A highlight can mark an important sentence. A question can capture uncertainty. A bookmark can simply say: come back here."
+      ],
+    },
+  ],
 };
 
-export default function App() {
-  const [documents, setDocuments] = useState<Document[]>(loadDocuments());
-  const [annotations, setAnnotations] = useState<Annotation[]>(loadAnnotations());
-  const [prefs, setPrefs] = useState<UserPrefs>(loadUserPrefs() || defaultPrefs);
+function App() {
+  const [view, setView] = useState<ActiveView>("home");
 
-  const [view, setView] = useState<"home" | "read" | "review" | "library">("home");
-  const [docId, setDocId] = useState(documents[0]?.id || "");
-  const [sectionId, setSectionId] = useState(documents[0]?.sections[0]?.id || "");
+  const [documents, setDocuments] = useState<Document[]>(() => {
+    const saved = loadDocuments();
+    return saved.length ? saved : [sampleDocument];
+  });
+
+  const [activeDocId, setActiveDocId] = useState(
+    () => documents[0]?.id || sampleDocument.id
+  );
+
+  const [annotations, setAnnotations] =
+    useState<Annotation[]>(loadAnnotations);
+
+  const [prefs, setPrefs] = useState<UserPrefs>(
+    loadUserPrefs
+  );
 
   const [modal, setModal] = useState<
-    "none" | "shortcuts" | "about" | "search" | "new" | "annotation"
-  >("none");
+    "new" | "shortcuts" | "about" | null
+  >(null);
 
-  const [annotationType, setAnnotationType] =
-    useState<AnnotationType>("note");
-
-  const [selectedQuote, setSelectedQuote] = useState("");
-
-  const document = documents.find(d => d.id === docId) || documents[0];
+  const activeDocument = useMemo(
+    () =>
+      documents.find(
+        document => document.id === activeDocId
+      ) || documents[0] || sampleDocument,
+    [documents, activeDocId]
+  );
 
   useEffect(() => {
     saveDocuments(documents);
@@ -47,253 +109,360 @@ export default function App() {
 
   useEffect(() => {
     saveUserPrefs(prefs);
-    document.documentElement.dataset.theme = prefs.theme;
+
+    document.documentElement.dataset.theme =
+      prefs.theme;
   }, [prefs]);
 
-  const currentSection =
-    document?.sections.find(s => s.id === sectionId) ||
-    document?.sections[0];
-
-  const addAnnotation = (
-    type: AnnotationType,
-    content = "",
-    quote = selectedQuote
-  ) => {
-    if (!document || !currentSection) return;
-
-    const annotation: Annotation = {
-      id: crypto.randomUUID(),
-      docId: document.id,
-      sectionId: currentSection.id,
-      type,
-      quote: quote || undefined,
-      content: content || undefined,
-      resolved: false,
-      createdAt: new Date().toISOString()
-    };
-
-    setAnnotations(prev => [annotation, ...prev]);
-    setModal("none");
-  };
-
-  const deleteAnnotation = (id: string) => {
-    setAnnotations(prev => prev.filter(a => a.id !== id));
-  };
-
-  const toggleQuestion = (id: string) => {
-    setAnnotations(prev =>
-      prev.map(a =>
-        a.id === id ? { ...a, resolved: !a.resolved } : a
-      )
-    );
-  };
-
-  const openAnnotation = (type: AnnotationType) => {
-    const quote = window.getSelection()?.toString().trim() || "";
-    setSelectedQuote(quote);
-    setAnnotationType(type);
-
-    if (type === "highlight" || type === "bookmark") {
-      addAnnotation(type, "", quote);
-    } else {
-      setModal("annotation");
-    }
-  };
-
-  const toggleTheme = () => {
-    setPrefs(prev => ({
-      ...prev,
-      theme: prev.theme === "light" ? "dark" : "light"
-    }));
-  };
-
-  const toggleZen = () => {
-    setPrefs(prev => ({
-      ...prev,
-      zenMode: !prev.zenMode
-    }));
-  };
-
   useEffect(() => {
-    const keydown = (e: KeyboardEvent) => {
-      if (e.key === "Tab") {
-        e.preventDefault();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Tab") {
+        event.preventDefault();
         return;
       }
 
-      if (e.key === "Escape") {
-        if (modal !== "none") {
-          setModal("none");
-          return;
-        }
-
-        if (view === "review" || view === "read" || view === "library") {
-          setView("home");
-          return;
-        }
-      }
-
       if (
-        document.activeElement instanceof HTMLInputElement ||
-        document.activeElement instanceof HTMLTextAreaElement
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
       ) {
         return;
       }
 
-      const key = e.key.toLowerCase();
+      const key = event.key.toLowerCase();
 
-      if (view === "home") {
-        if (e.key === "Enter" || key === "e") {
-          setView("read");
-        } else if (key === "n") {
-          setModal("new");
-        } else if (key === "l") {
-          setView("library");
-        } else if (key === "a") {
-          setModal("about");
-        } else if (key === "?" || key === "h") {
-          setModal("shortcuts");
-        } else if (key === "t") {
-          toggleTheme();
+      if (event.key === "Escape") {
+        if (modal) {
+          setModal(null);
+          return;
+        }
+
+        if (view !== "home") {
+          setView("home");
         }
 
         return;
       }
 
-      if (key === "n") openAnnotation("note");
-      else if (key === "m") openAnnotation("highlight");
-      else if (key === "q") openAnnotation("question");
-      else if (key === "b") openAnnotation("bookmark");
-      else if (key === "r") setView(v => v === "review" ? "read" : "review");
-      else if (key === "l") setView("library");
-      else if (key === "/") setModal("search");
-      else if (key === "f") toggleZen();
-      else if (key === "t") toggleTheme();
-      else if (key === "?" || key === "h") setModal("shortcuts");
-      else if (key === "1") setView("read");
-      else if (key === "2") setView("review");
-      else if (key === "3") setView("library");
+      if (view === "home") {
+        if (key === "n") setModal("new");
+        if (key === "l") setView("library");
+        if (key === "a") setModal("about");
+        if (key === "?") setModal("shortcuts");
+
+        if (event.key === "Enter") {
+          setView("read");
+        }
+      }
+
+      if (view === "read") {
+        if (key === "l") setView("library");
+        if (key === "r") setView("review");
+        if (key === "t") toggleTheme();
+        if (key === "f") toggleZen();
+        if (key === "?") setModal("shortcuts");
+      }
+
+      if (view === "review") {
+        if (key === "l") setView("library");
+        if (key === "1") setView("read");
+      }
+
+      if (view === "library") {
+        if (key === "n") setModal("new");
+        if (key === "1") setView("read");
+        if (key === "?") setModal("shortcuts");
+      }
     };
 
-    window.addEventListener("keydown", keydown);
-    return () => window.removeEventListener("keydown", keydown);
-  }, [view, modal, selectedQuote]);
+    window.addEventListener("keydown", handleKeyDown);
 
-  if (!document) {
-    return (
-      <div className="app">
-        <HomeHero
-          theme={prefs.theme}
-          onToggleTheme={toggleTheme}
-          onStartReading={() => setModal("new")}
-          onOpenNewDoc={() => setModal("new")}
-          onOpenLibrary={() => setView("library")}
-          onOpenShortcuts={() => setModal("shortcuts")}
-          onOpenAbout={() => setModal("about")}
-        />
-      </div>
+    return () =>
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown
+      );
+  }, [view, modal, prefs.theme]);
+
+  const toggleTheme = () => {
+    setPrefs(current => ({
+      ...current,
+      theme:
+        current.theme === "light"
+          ? "dark"
+          : "light",
+    }));
+  };
+
+  const toggleZen = () => {
+    setPrefs(current => ({
+      ...current,
+      zenMode: !current.zenMode,
+    }));
+  };
+
+  const openDocument = (id: string) => {
+    setActiveDocId(id);
+    setView("read");
+  };
+
+  const createDocument = (
+    title: string,
+    author: string,
+    category: string,
+    content: string
+  ) => {
+    const paragraphs = content
+      .split(/\n+/)
+      .map(value => value.trim())
+      .filter(Boolean);
+
+    const sections = [
+      {
+        id: `section-${Date.now()}`,
+        title: "SECTION 1",
+        content: paragraphs.join("\n\n"),
+        paragraphs:
+          paragraphs.length
+            ? paragraphs
+            : ["No content provided."],
+      },
+    ];
+
+    const words = content
+      .split(/\s+/)
+      .filter(Boolean).length;
+
+    const newDocument: Document = {
+      id: `doc-${Date.now()}`,
+      title: title.trim() || "Untitled Reading",
+      author: author.trim() || "Anonymous",
+      category: category.trim() || "ARTICLE",
+      readTimeMinutes: Math.max(
+        1,
+        Math.ceil(words / 200)
+      ),
+      sections,
+      lastReadSectionId: sections[0].id,
+      createdAt: new Date().toISOString(),
+    };
+
+    setDocuments(current => [
+      ...current,
+      newDocument,
+    ]);
+
+    setActiveDocId(newDocument.id);
+    setModal(null);
+    setView("read");
+  };
+
+  const deleteDocument = (id: string) => {
+    const document = documents.find(
+      item => item.id === id
     );
-  }
 
-  return (
-    <div className={`app ${prefs.zenMode ? "zen-mode" : ""}`}>
-      {view !== "home" && (
-        <Header
-          document={document}
-          theme={prefs.theme}
-          zenMode={prefs.zenMode}
-          onToggleTheme={toggleTheme}
-          onToggleZen={toggleZen}
-          onOpenLibrary={() => setView("library")}
-          onOpenSearch={() => setModal("search")}
-          onOpenShortcuts={() => setModal("shortcuts")}
-          onBack={() => setView("home")}
-        />
-      )}
+    if (!document || document.isSample) return;
 
-      {view === "home" && (
+    const nextDocuments = documents.filter(
+      item => item.id !== id
+    );
+
+    setDocuments(
+      nextDocuments.length
+        ? nextDocuments
+        : [sampleDocument]
+    );
+
+    if (activeDocId === id) {
+      setActiveDocId(
+        nextDocuments[0]?.id ||
+          sampleDocument.id
+      );
+      setView("library");
+    }
+
+    setAnnotations(current =>
+      current.filter(
+        annotation => annotation.docId !== id
+      )
+    );
+  };
+
+  const addAnnotation = (
+    type: AnnotationType,
+    sectionId: string,
+    quote?: string,
+    content?: string
+  ) => {
+    const annotation: Annotation = {
+      id: `annotation-${Date.now()}`,
+      docId: activeDocument.id,
+      sectionId,
+      type,
+      quote,
+      content,
+      resolved: false,
+      createdAt: new Date().toISOString(),
+    };
+
+    setAnnotations(current => [
+      ...current,
+      annotation,
+    ]);
+  };
+
+  const toggleResolveQuestion = (id: string) => {
+    setAnnotations(current =>
+      current.map(annotation =>
+        annotation.id === id
+          ? {
+              ...annotation,
+              resolved: !annotation.resolved,
+            }
+          : annotation
+      )
+    );
+  };
+
+  const deleteAnnotation = (id: string) => {
+    setAnnotations(current =>
+      current.filter(
+        annotation => annotation.id !== id
+      )
+    );
+  };
+
+  const selectSection = (id: string) => {
+    setDocuments(current =>
+      current.map(document =>
+        document.id === activeDocument.id
+          ? {
+              ...document,
+              lastReadSectionId: id,
+            }
+          : document
+      )
+    );
+  };
+
+  if (view === "home") {
+    return (
+      <>
         <HomeHero
           theme={prefs.theme}
           onToggleTheme={toggleTheme}
           onStartReading={() => setView("read")}
           onOpenNewDoc={() => setModal("new")}
           onOpenLibrary={() => setView("library")}
-          onOpenShortcuts={() => setModal("shortcuts")}
+          onOpenShortcuts={() =>
+            setModal("shortcuts")
+          }
           onOpenAbout={() => setModal("about")}
         />
-      )}
 
-      {view === "read" && (
-        <Workspace
-          document={document}
-          sectionId={sectionId}
-          annotations={annotations}
-          prefs={prefs}
-          onSectionChange={setSectionId}
-          onAddAnnotation={openAnnotation}
-          onDeleteAnnotation={deleteAnnotation}
-          onToggleQuestion={toggleQuestion}
-          onToggleShowAll={() =>
-            setPrefs(p => ({
-              ...p,
-              showAllMarginAnnotations: !p.showAllMarginAnnotations
-            }))
-          }
-          onOpenLibrary={() => setView("library")}
-        />
-      )}
+        {modal === "new" && (
+          <NewDocumentModal
+            onClose={() => setModal(null)}
+            onCreate={createDocument}
+          />
+        )}
 
-      {view === "review" && (
-        <ReviewMode
-          document={document}
-          annotations={annotations}
-          onSelectSection={id => {
-            setSectionId(id);
-            setView("read");
-          }}
-          onReturnToReading={() => setView("read")}
-          onToggleResolveQuestion={toggleQuestion}
-          onDeleteAnnotation={deleteAnnotation}
-        />
-      )}
+        {modal === "shortcuts" && (
+          <ShortcutsModal
+            onClose={() => setModal(null)}
+          />
+        )}
 
-      {view === "library" && (
+        {modal === "about" && (
+          <AboutModal
+            onClose={() => setModal(null)}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (view === "library") {
+    return (
+      <>
         <Library
           documents={documents}
-          activeDocId={docId}
-          onSelect={id => {
-            setDocId(id);
-            const doc = documents.find(d => d.id === id);
-            setSectionId(doc?.sections[0]?.id || "");
-            setView("read");
-          }}
+          activeDocId={activeDocId}
+          onSelect={openDocument}
           onNew={() => setModal("new")}
-          onDelete={id => {
-            setDocuments(prev => prev.filter(d => d.id !== id));
-          }}
+          onDelete={deleteDocument}
           onBack={() => setView("home")}
         />
-      )}
 
-      {modal !== "none" && (
-        <Modal
-          type={modal}
-          annotationType={annotationType}
-          quote={selectedQuote}
-          documents={documents}
-          onClose={() => setModal("none")}
-          onSaveAnnotation={content =>
-            addAnnotation(annotationType, content)
-          }
-          onCreateDocument={doc => {
-            setDocuments(prev => [doc, ...prev]);
-            setDocId(doc.id);
-            setSectionId(doc.sections[0]?.id || "");
-            setModal("none");
-            setView("read");
-          }}
+        {modal === "new" && (
+          <NewDocumentModal
+            onClose={() => setModal(null)}
+            onCreate={createDocument}
+          />
+        )}
+
+        {modal === "shortcuts" && (
+          <ShortcutsModal
+            onClose={() => setModal(null)}
+          />
+        )}
+      </>
+    );
+  }
+
+  if (view === "review") {
+    return (
+      <ReviewMode
+        document={activeDocument}
+        annotations={annotations}
+        onSelectSection={id => {
+          selectSection(id);
+          setView("read");
+        }}
+        onReturnToReading={() =>
+          setView("read")
+        }
+        onToggleResolveQuestion={
+          toggleResolveQuestion
+        }
+        onDeleteAnnotation={deleteAnnotation}
+      />
+    );
+  }
+
+  return (
+    <>
+      <Workspace
+        document={activeDocument}
+        annotations={annotations}
+        fontFamily={prefs.fontFamily}
+        fontSize={prefs.fontSize}
+        zenMode={prefs.zenMode}
+        theme={prefs.theme}
+        onToggleTheme={toggleTheme}
+        onToggleZen={toggleZen}
+        onOpenLibrary={() =>
+          setView("library")
+        }
+        onOpenSearch={() => {}}
+        onOpenShortcuts={() =>
+          setModal("shortcuts")
+        }
+        onBack={() => setView("home")}
+        onOpenReview={() =>
+          setView("review")
+        }
+        onAddAnnotation={addAnnotation}
+        onSelectSection={selectSection}
+      />
+
+      {modal === "shortcuts" && (
+        <ShortcutsModal
+          onClose={() => setModal(null)}
         />
       )}
-    </div>
+    </>
   );
 }
+
+export default App;
