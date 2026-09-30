@@ -1,60 +1,41 @@
-import React, { useEffect, useState } from 'react';
-import { HomeHero } from './components/HomeHero';
-import { Header } from './components/Header';
-import { Workspace } from './components/Workspace';
-import { Library } from './components/Library';
-import { NotePanel } from './components/NotePanel';
-import { Modal } from './components/Modal';
-import type { ActiveView, Annotation, Document, UserPrefs } from './types';
-import {
-  loadAnnotations,
-  loadDocuments,
-  loadUserPrefs,
-  saveAnnotations,
-  saveDocuments,
-  saveUserPrefs,
-} from './utils/storage';
-import { sampleDocuments } from './data/documents';
+import { useEffect, useState } from "react";
+import "./App.css";
+import type { Annotation, AnnotationType, Document, UserPrefs } from "./types";
+import { loadAnnotations, loadDocuments, loadUserPrefs, saveAnnotations, saveDocuments, saveUserPrefs } from "./utils/storage";
+import { HomeHero } from "./components/HomeHero";
+import { Header } from "./components/Header";
+import { Workspace } from "./components/Workspace";
+import { Library } from "./components/Library";
+import { ReviewMode } from "./components/ReviewMode";
+import { Modal } from "./components/Modal";
 
 const defaultPrefs: UserPrefs = {
-  theme: 'light',
-  fontFamily: 'serif',
-  fontSize: 'md',
+  theme: "light",
+  fontFamily: "serif",
+  fontSize: "md",
   zenMode: false,
-  showAllMarginAnnotations: false,
+  showAllMarginAnnotations: false
 };
 
-export const App: React.FC = () => {
-  const [documents, setDocuments] = useState<Document[]>(() => {
-    const saved = loadDocuments();
-    return saved.length ? saved : sampleDocuments;
-  });
+export default function App() {
+  const [documents, setDocuments] = useState<Document[]>(loadDocuments());
+  const [annotations, setAnnotations] = useState<Annotation[]>(loadAnnotations());
+  const [prefs, setPrefs] = useState<UserPrefs>(loadUserPrefs() || defaultPrefs);
 
-  const [annotations, setAnnotations] = useState<Annotation[]>(() =>
-    loadAnnotations()
-  );
+  const [view, setView] = useState<"home" | "read" | "review" | "library">("home");
+  const [docId, setDocId] = useState(documents[0]?.id || "");
+  const [sectionId, setSectionId] = useState(documents[0]?.sections[0]?.id || "");
 
-  const [userPrefs, setUserPrefs] = useState<UserPrefs>(() => ({
-    ...defaultPrefs,
-    ...loadUserPrefs(),
-  }));
+  const [modal, setModal] = useState<
+    "none" | "shortcuts" | "about" | "search" | "new" | "annotation"
+  >("none");
 
-  const [activeView, setActiveView] = useState<ActiveView>('home');
+  const [annotationType, setAnnotationType] =
+    useState<AnnotationType>("note");
 
-  const [activeDocId, setActiveDocId] = useState<string>(
-    () => documents[0]?.id || ''
-  );
+  const [selectedQuote, setSelectedQuote] = useState("");
 
-  const [notePanelOpen, setNotePanelOpen] = useState(false);
-  const [noteSectionId, setNoteSectionId] = useState('');
-  const [noteQuote, setNoteQuote] = useState('');
-
-  const [aboutOpen, setAboutOpen] = useState(false);
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
-
-  const activeDocument =
-    documents.find((document) => document.id === activeDocId) ||
-    documents[0];
+  const document = documents.find(d => d.id === docId) || documents[0];
 
   useEffect(() => {
     saveDocuments(documents);
@@ -65,266 +46,254 @@ export const App: React.FC = () => {
   }, [annotations]);
 
   useEffect(() => {
-    saveUserPrefs(userPrefs);
-    document.documentElement.setAttribute(
-      'data-theme',
-      userPrefs.theme
+    saveUserPrefs(prefs);
+    document.documentElement.dataset.theme = prefs.theme;
+  }, [prefs]);
+
+  const currentSection =
+    document?.sections.find(s => s.id === sectionId) ||
+    document?.sections[0];
+
+  const addAnnotation = (
+    type: AnnotationType,
+    content = "",
+    quote = selectedQuote
+  ) => {
+    if (!document || !currentSection) return;
+
+    const annotation: Annotation = {
+      id: crypto.randomUUID(),
+      docId: document.id,
+      sectionId: currentSection.id,
+      type,
+      quote: quote || undefined,
+      content: content || undefined,
+      resolved: false,
+      createdAt: new Date().toISOString()
+    };
+
+    setAnnotations(prev => [annotation, ...prev]);
+    setModal("none");
+  };
+
+  const deleteAnnotation = (id: string) => {
+    setAnnotations(prev => prev.filter(a => a.id !== id));
+  };
+
+  const toggleQuestion = (id: string) => {
+    setAnnotations(prev =>
+      prev.map(a =>
+        a.id === id ? { ...a, resolved: !a.resolved } : a
+      )
     );
-  }, [userPrefs]);
+  };
+
+  const openAnnotation = (type: AnnotationType) => {
+    const quote = window.getSelection()?.toString().trim() || "";
+    setSelectedQuote(quote);
+    setAnnotationType(type);
+
+    if (type === "highlight" || type === "bookmark") {
+      addAnnotation(type, "", quote);
+    } else {
+      setModal("annotation");
+    }
+  };
 
   const toggleTheme = () => {
-    setUserPrefs((current) => ({
-      ...current,
-      theme: current.theme === 'light' ? 'dark' : 'light',
+    setPrefs(prev => ({
+      ...prev,
+      theme: prev.theme === "light" ? "dark" : "light"
     }));
   };
 
-  const openDocument = (document: Document) => {
-    setActiveDocId(document.id);
-    setActiveView('read');
-  };
-
-  const openNotePanel = (sectionId: string, quote: string) => {
-    setNoteSectionId(sectionId);
-    setNoteQuote(quote);
-    setNotePanelOpen(true);
-  };
-
-  const saveNote = (content: string) => {
-    if (!activeDocument) return;
-
-    const newNote: Annotation = {
-      id: `note-${Date.now()}`,
-      docId: activeDocument.id,
-      sectionId: noteSectionId,
-      type: 'note',
-      quote: noteQuote,
-      content,
-      createdAt: new Date().toISOString(),
-    };
-
-    setAnnotations((current) => [newNote, ...current]);
-    setNotePanelOpen(false);
+  const toggleZen = () => {
+    setPrefs(prev => ({
+      ...prev,
+      zenMode: !prev.zenMode
+    }));
   };
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Tab') {
-        event.preventDefault();
+    const keydown = (e: KeyboardEvent) => {
+      if (e.key === "Tab") {
+        e.preventDefault();
         return;
       }
 
-      const tag = (event.target as HTMLElement)?.tagName?.toLowerCase();
+      if (e.key === "Escape") {
+        if (modal !== "none") {
+          setModal("none");
+          return;
+        }
 
-      if (tag === 'input' || tag === 'textarea') {
+        if (view === "review" || view === "read" || view === "library") {
+          setView("home");
+          return;
+        }
+      }
+
+      if (
+        document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLTextAreaElement
+      ) {
         return;
       }
 
-      if (event.key === 'Escape') {
-        if (notePanelOpen) {
-          setNotePanelOpen(false);
-          return;
-        }
+      const key = e.key.toLowerCase();
 
-        if (aboutOpen) {
-          setAboutOpen(false);
-          return;
-        }
-
-        if (shortcutsOpen) {
-          setShortcutsOpen(false);
-          return;
-        }
-
-        if (activeView !== 'home') {
-          setActiveView('home');
-          return;
-        }
-      }
-
-      if (activeView === 'home') {
-        if (event.key === 'a' || event.key === 'A') {
-          event.preventDefault();
-          setAboutOpen(true);
-        }
-
-        if (event.key === '?' || event.key === 'h') {
-          event.preventDefault();
-          setShortcutsOpen(true);
-        }
-
-        if (event.key === 'l' || event.key === 'L') {
-          event.preventDefault();
-          setActiveView('library');
-        }
-
-        if (event.key === 't' || event.key === 'T') {
-          event.preventDefault();
+      if (view === "home") {
+        if (e.key === "Enter" || key === "e") {
+          setView("read");
+        } else if (key === "n") {
+          setModal("new");
+        } else if (key === "l") {
+          setView("library");
+        } else if (key === "a") {
+          setModal("about");
+        } else if (key === "?" || key === "h") {
+          setModal("shortcuts");
+        } else if (key === "t") {
           toggleTheme();
         }
 
         return;
       }
 
-      if (event.key === 'l' || event.key === 'L') {
-        event.preventDefault();
-        setActiveView('library');
-      }
-
-      if (event.key === 't' || event.key === 'T') {
-        event.preventDefault();
-        toggleTheme();
-      }
-
-      if (event.key === '?' || event.key === 'h') {
-        event.preventDefault();
-        setShortcutsOpen(true);
-      }
+      if (key === "n") openAnnotation("note");
+      else if (key === "m") openAnnotation("highlight");
+      else if (key === "q") openAnnotation("question");
+      else if (key === "b") openAnnotation("bookmark");
+      else if (key === "r") setView(v => v === "review" ? "read" : "review");
+      else if (key === "l") setView("library");
+      else if (key === "/") setModal("search");
+      else if (key === "f") toggleZen();
+      else if (key === "t") toggleTheme();
+      else if (key === "?" || key === "h") setModal("shortcuts");
+      else if (key === "1") setView("read");
+      else if (key === "2") setView("review");
+      else if (key === "3") setView("library");
     };
 
-    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener("keydown", keydown);
+    return () => window.removeEventListener("keydown", keydown);
+  }, [view, modal, selectedQuote]);
 
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown, true);
-    };
-  }, [
-    activeView,
-    aboutOpen,
-    shortcutsOpen,
-    notePanelOpen,
-    userPrefs.theme,
-  ]);
-
-  if (!activeDocument && activeView === 'read') {
-    setActiveView('library');
-    return null;
+  if (!document) {
+    return (
+      <div className="app">
+        <HomeHero
+          theme={prefs.theme}
+          onToggleTheme={toggleTheme}
+          onStartReading={() => setModal("new")}
+          onOpenNewDoc={() => setModal("new")}
+          onOpenLibrary={() => setView("library")}
+          onOpenShortcuts={() => setModal("shortcuts")}
+          onOpenAbout={() => setModal("about")}
+        />
+      </div>
+    );
   }
 
   return (
-    <div className="app">
-      {activeView === 'home' ? (
-        <HomeHero
-          theme={userPrefs.theme}
+    <div className={`app ${prefs.zenMode ? "zen-mode" : ""}`}>
+      {view !== "home" && (
+        <Header
+          document={document}
+          theme={prefs.theme}
+          zenMode={prefs.zenMode}
           onToggleTheme={toggleTheme}
-          onStartReading={() => setActiveView('read')}
-          onOpenNewDoc={() => setActiveView('library')}
-          onOpenLibrary={() => setActiveView('library')}
-          onOpenShortcuts={() => setShortcutsOpen(true)}
-          onOpenAbout={() => setAboutOpen(true)}
+          onToggleZen={toggleZen}
+          onOpenLibrary={() => setView("library")}
+          onOpenSearch={() => setModal("search")}
+          onOpenShortcuts={() => setModal("shortcuts")}
+          onBack={() => setView("home")}
         />
-      ) : (
-        <div className="app-shell">
-          <Header
-            theme={userPrefs.theme}
-            title={
-              activeView === 'library'
-                ? 'LIBRARY'
-                : activeDocument?.title || 'NOTEBOOK'
-            }
-            onToggleTheme={toggleTheme}
-            onOpenLibrary={() => setActiveView('library')}
-            onBack={() => setActiveView('home')}
-          />
-
-          <main className="app-main">
-            {activeView === 'library' ? (
-              <Library
-                documents={documents}
-                onOpenDocument={openDocument}
-                onBack={() => setActiveView('home')}
-              />
-            ) : (
-              activeDocument && (
-                <Workspace
-                  document={activeDocument}
-                  onBack={() => setActiveView('home')}
-                  onOpenLibrary={() => setActiveView('library')}
-                  onAddNote={openNotePanel}
-                />
-              )
-            )}
-          </main>
-        </div>
       )}
 
-      <NotePanel
-        open={notePanelOpen}
-        quote={noteQuote}
-        onSave={saveNote}
-        onClose={() => setNotePanelOpen(false)}
-      />
+      {view === "home" && (
+        <HomeHero
+          theme={prefs.theme}
+          onToggleTheme={toggleTheme}
+          onStartReading={() => setView("read")}
+          onOpenNewDoc={() => setModal("new")}
+          onOpenLibrary={() => setView("library")}
+          onOpenShortcuts={() => setModal("shortcuts")}
+          onOpenAbout={() => setModal("about")}
+        />
+      )}
 
-      <Modal
-        open={aboutOpen}
-        title="ABOUT NOTEBOOK"
-        onClose={() => setAboutOpen(false)}
-      >
-        <div className="about-content">
-          <div className="about-logo">NOTEBOOK</div>
+      {view === "read" && (
+        <Workspace
+          document={document}
+          sectionId={sectionId}
+          annotations={annotations}
+          prefs={prefs}
+          onSectionChange={setSectionId}
+          onAddAnnotation={openAnnotation}
+          onDeleteAnnotation={deleteAnnotation}
+          onToggleQuestion={toggleQuestion}
+          onToggleShowAll={() =>
+            setPrefs(p => ({
+              ...p,
+              showAllMarginAnnotations: !p.showAllMarginAnnotations
+            }))
+          }
+          onOpenLibrary={() => setView("library")}
+        />
+      )}
 
-          <p>
-            A keyboard-first reading and note-taking workspace.
-          </p>
+      {view === "review" && (
+        <ReviewMode
+          document={document}
+          annotations={annotations}
+          onSelectSection={id => {
+            setSectionId(id);
+            setView("read");
+          }}
+          onReturnToReading={() => setView("read")}
+          onToggleResolveQuestion={toggleQuestion}
+          onDeleteAnnotation={deleteAnnotation}
+        />
+      )}
 
-          <p>
-            Read without losing your thoughts.
-          </p>
+      {view === "library" && (
+        <Library
+          documents={documents}
+          activeDocId={docId}
+          onSelect={id => {
+            setDocId(id);
+            const doc = documents.find(d => d.id === id);
+            setSectionId(doc?.sections[0]?.id || "");
+            setView("read");
+          }}
+          onNew={() => setModal("new")}
+          onDelete={id => {
+            setDocuments(prev => prev.filter(d => d.id !== id));
+          }}
+          onBack={() => setView("home")}
+        />
+      )}
 
-          <div className="about-flow">
-            READ → THINK → NOTE
-          </div>
-        </div>
-      </Modal>
-
-      <Modal
-        open={shortcutsOpen}
-        title="KEYBOARD CONTROLS"
-        onClose={() => setShortcutsOpen(false)}
-      >
-        <div className="shortcuts-grid">
-          <div className="shortcut-row">
-            <span className="shortcut-label">Navigate</span>
-            <span>
-              <span className="keyboard-key">↑</span>
-              <span className="keyboard-key">↓</span>
-              <span className="keyboard-key">←</span>
-              <span className="keyboard-key">→</span>
-            </span>
-          </div>
-
-          <div className="shortcut-row">
-            <span className="shortcut-label">Select</span>
-            <span className="keyboard-key">ENTER</span>
-          </div>
-
-          <div className="shortcut-row">
-            <span className="shortcut-label">Back</span>
-            <span className="keyboard-key">ESC</span>
-          </div>
-
-          <div className="shortcut-row">
-            <span className="shortcut-label">Add Note</span>
-            <span className="keyboard-key">N</span>
-          </div>
-
-          <div className="shortcut-row">
-            <span className="shortcut-label">Library</span>
-            <span className="keyboard-key">L</span>
-          </div>
-
-          <div className="shortcut-row">
-            <span className="shortcut-label">Theme</span>
-            <span className="keyboard-key">T</span>
-          </div>
-
-          <div className="shortcut-row">
-            <span className="shortcut-label">Shortcuts</span>
-            <span className="keyboard-key">?</span>
-          </div>
-        </div>
-      </Modal>
+      {modal !== "none" && (
+        <Modal
+          type={modal}
+          annotationType={annotationType}
+          quote={selectedQuote}
+          documents={documents}
+          onClose={() => setModal("none")}
+          onSaveAnnotation={content =>
+            addAnnotation(annotationType, content)
+          }
+          onCreateDocument={doc => {
+            setDocuments(prev => [doc, ...prev]);
+            setDocId(doc.id);
+            setSectionId(doc.sections[0]?.id || "");
+            setModal("none");
+            setView("read");
+          }}
+        />
+      )}
     </div>
   );
-};
-
-export default App;
+}
