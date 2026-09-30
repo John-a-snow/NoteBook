@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap');
+
+:root {
+    font-family:  'VT323', monospace;
+    color: #2d241b;
+    background: #87ceeb;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: none;
+    -moz-osx-font-smoothing: grayscale;
+
+    --world-bg #87ceeb;
+    --surface: #e8d9b5;
+    --surface-inset: #c8b58a;
+
+    --border: #5c4630;
+    --border-light: #a9855b;
+    --text: #2d241b;
+    --text-muted: #6f5a43;
+
+    --accent: #31ae1f;
+    --accent-dark: #237c16;
+    --accent-secondary: #f2c94c;
+    --highlight: #fff2a8;
+    --danger: #b9362b;
+
+    --stone: #7f7f7f;
+    --stone-dark: #686868;
+    --dirt: #8b5a2b;
+    --dirt-dark: #5c3a1e;
+    --grass: #4caf24;
+    --oak: #a66a35;
+    --plank: #c08a52;
+    --paper: #e8d9b5;
+    --water: #3a91c9;
+}
+
+html[data-theme="dark"] {
+    color: #e8edf4;
+    background: #101827;
+
+    --world-bg: #101827;
+    --surface: #252b35;
+    

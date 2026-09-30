@@ -148,8 +148,8 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
       <div className="home-pixel-overlay" aria-hidden="true" />
 
       <div className="home-topbar-left">
-        <div className="home-bookmark-brand" title="BOOKMARK Edition">
-          <span className="home-bookmark-text">BOOKMARK</span>
+        <div className="home-bookmark-brand" title="NOTEBOOK Edition">
+          <span className="home-bookmark-text">NOTEBOOK</span>
         </div>
       </div>
 
@@ -188,3 +188,22 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
             <span className="mc-arrow-cursor">◄</span>
           )}
         </button>
+
+        <button
+          type="button"
+          tabIndex={-1}
+          className={'home-about-btn ${
+            selectedTarget === 'about' ? 'is-arrow-selected' : ''
+          }`}
+          onClick={() => {
+            setSelectedTarget('about');
+            onOpenAbout();
+          }}
+        </buton>
+    </div>
+
+    <div className="home-center">
+        <div className="home-logo-wrap">
+            <h1 className='minecraft-gold-subtitle'>
+                KEYBOARD EDITION
+        </div>
