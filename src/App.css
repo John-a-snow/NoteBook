@@ -1,0 +1,78 @@
+.app {
+    width: 100%;
+    height: 100%;
+    min-height: 100vh;
+    overflow: hidden;
+    background: var(--world-bg);
+    color: var(--text);
+}
+
+.app-shell {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--world-bg);
+}
+
+.app-main {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+button {
+    cursor: default;
+    user-select: none;
+}
+
+button:disabled {
+    opacity: 0.45;
+}
+
+.pixel-panel {
+    border: 3px solid var(--border);
+    background: var(--surface);
+    box-shadow: 
+      inset 3px 3px 0 var(--border-light),
+      inset -3px -3px 0 rgba(--surface-inset);
+}
+
+.pixel-panel-dark {
+    border: 3px solid var(--border);
+    background: var(--surface-inset);
+    box-shadow:
+       inset 3px 3px 0 rgba(255, 255, 255, 0.08),
+       inset -3px -3px 0 rgba(0, 0, 0, 0.25);
+}
+
+.pixel-panel {
+    position: relative;
+    min-height: 38px;
+    padding: 7px 14px;
+    border: 3px solid var(--border);
+    background: var(--surface-raised);
+    color: var(--text);
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    line-height: 1;
+    box-shadow: 
+      inset 2px 2px 0 var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px;
+      box-shadow: 
+        inset 2px 2px 0 var(--border-light),
+        inset -2px -2px 0 var(--dirt-dark);
+}
+
+.home-theme-btn:hover,
+.home-about-btn:hover,
+.home-theme-btn.is-arrow-selected,
+.home-about-btn.home-theme-btn.is-arrow-selected {
+    background: var(--accent);
+    color: #ffffff;
+}
+.home-theme-icon {
+    flex-shrink: ;
