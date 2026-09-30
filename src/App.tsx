@@ -18,4 +18,50 @@ export const App: React.FC = () => {
     const [documents, setDocuments] = useState<Document[]>(() => loadDocuments());
     const [activeDocId, setActiveDocId] = useState<string>(() => loadActiveDocId(documents[0]?.id || ''));
     const [annotations, setAnnotations] = useState<Annotation[]>(() => loadAnnotations());
-    const [userPrefs, setUserPrefs] = useState<UserPrefs>(()
+    const [userPrefs, setUserPrefs] = useState<UserPrefs>(() => loadUsersPrefs());
+    const currentDoc = documents.find((d) => d.id === activeDocId) || documents[0] || EMPTY_DOC;
+
+    const [activeSectionId, setActiveSectionId] = useState<string>(currentDoc.lastReadSectionId || currentDoc.sections[0]?.id || '');
+    const currentSection = currentDoc.sections[activeSectionIndex] || currentDoc.sections[0] || { id: 'sec-1', title: 'Section', content: '', paragraphs: [] };
+    const currentParaText = currentSection.paragraphs[activeParaIndex] || currentSection.paragraphs[0] || '';
+
+    useEffect(() => { saveDocuments(documents); }, [documents]);
+
+    useEffect(() => {
+        safeActiveDocId(activeDocId);
+        const doc = documents.find((d) => d.id === activedocId);
+        if (doc?.sections.length) {
+            setActiveSectionId(doc.lastReadSectionId || doc.sectios[0].id);
+            setActiveParaIndex(0);
+        }
+    }, [activeDocId, documents]);
+
+    useEffect(() => {
+        saveUserPrefs(userPrefs);
+        document.documentElement.setAttribute('data-theme', userPrefs.theme);
+    }, [userPrefs]); 
+
+    const showTost = (msg: string) => {
+        setLastActionToast(msg);
+        setTimeout(() => setLastActiveToast(p) => (p === msg ? null : p)), 2200);
+    };
+
+    const handleSelectSection = (secId: string, paraIdx = 0) => {
+        setActiveSectionId(secId);
+        setActiveParaIndex(paraIdx);
+        setDocuments((prev) =>
+            prev.map((d) =>
+                d.id === currentDoc.id
+                  ? {...d, lastReadSectionId: secId }
+                  : d
+            )
+        );
+    };
+
+    const handleAddAnnotation = (
+        type: AnnotationType,
+        content?: string,
+        quote?: string
+    ) => {
+        const sel = window.getSelection()?.toString().trim();
+        
