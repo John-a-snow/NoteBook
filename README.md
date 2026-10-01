@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/Third_space.png" alt="NOTEBOOK" width="900">
+  <img src="assets/Tabbed.png" alt="NOTEBOOK" width="900">
 </p>
 
 <p align="center">
