@@ -159,6 +159,3 @@ export const NewDocModal: React.FC<NewDocModalProps> = ({ isOpen, onSave, onSele
     </div>
   );
 };
-
-<span className="brand-pixel-box">NOTEBOOK</span>
-<speechSynthesis = speak infront of pi
