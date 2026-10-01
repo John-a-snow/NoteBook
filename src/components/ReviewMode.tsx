@@ -1,485 +1,131 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  Bookmark,
-  Check,
-  CheckCircle2,
-  CircleHelp,
-  FileText,
-  Highlighter,
-  MessageSquare,
-  Trash2,
-} from "lucide-react";
-import type {
-  Annotation,
-  AnnotationType,
-  Document,
-} from "../types";
+import React, { useState } from 'react';
+import type { Document, Annotation, AnnotationType } from '../types';
+import { Kbd } from './Kbd';
+import { CheckSquare, Highlighter, HelpCircle, MessageSquare, Bookmark, ArrowLeft, CornerDownLeft, CheckCircle2, Check, Trash2, Copy, Sparkles, BookOpen } from 'lucide-react';
 
 interface ReviewModeProps {
-  document: Document;
-  annotations: Annotation[];
-  onSelectSection: (id: string) => void;
-  onReturnToReading: () => void;
-  onToggleResolveQuestion: (id: string) => void;
-  onDeleteAnnotation: (id: string) => void;
+  document: Document; annotations: Annotation[];
+  onSelectSection: (sectionId: string) => void; onReturnToReading: () => void;
+  onToggleResolveQuestion: (id: string) => void; onDeleteAnnotation: (id: string) => void;
 }
 
-type FilterType = "all" | AnnotationType;
+export const ReviewMode: React.FC<ReviewModeProps> = ({
+  document, annotations, onSelectSection, onReturnToReading, onToggleResolveQuestion, onDeleteAnnotation
+}) => {
+  const [filter, setFilter] = useState<'all' | AnnotationType>('all');
+  const [copiedToast, setCopiedToast] = useState(false);
 
-const labels: Record<AnnotationType, string> = {
-  note: "NOTE",
-  highlight: "HIGHLIGHT",
-  question: "QUESTION",
-  bookmark: "BOOKMARK",
-};
+  const docAnns = annotations.filter((a) => a.docId === document.id);
+  const highlights = docAnns.filter((a) => a.type === 'highlight');
+  const questions = docAnns.filter((a) => a.type === 'question');
+  const notes = docAnns.filter((a) => a.type === 'note');
+  const bookmarks = docAnns.filter((a) => a.type === 'bookmark');
+  const unresolvedCount = questions.filter((q) => !q.resolved).length;
+  const filtered = docAnns.filter((a) => filter === 'all' || a.type === filter);
+  const getSecTitle = (id: string) => document.sections.find((s) => s.id === id)?.title || 'Section';
 
-function AnnotationIcon({
-  type,
-}: {
-  type: AnnotationType;
-}) {
-  if (type === "note") {
-    return <MessageSquare size={16} />;
-  }
+  const handleExportMarkdown = () => {
+    let md = `# Reading Review: ${document.title}\n**Author**: ${document.author}\n**Date**: ${new Date().toLocaleDateString()}\n\n## Summary Stats\n- Highlights: ${highlights.length}\n- Questions: ${questions.length} (${questions.length - unresolvedCount} resolved)\n- Notes: ${notes.length}\n- Bookmarks: ${bookmarks.length}\n\n`;
+    if (highlights.length) { md += `## Highlights\n`; highlights.forEach((h) => { md += `> "${h.quote || 'Highlighted section'}"\n*— From ${getSecTitle(h.sectionId)}*\n\n`; }); }
+    if (questions.length) { md += `## Questions\n`; questions.forEach((q) => { md += `### ${q.resolved ? '[x]' : '[ ]'} ${q.content}\n${q.quote ? `> "${q.quote}"\n` : ''}*Context: ${getSecTitle(q.sectionId)}*\n\n`; }); }
+    if (notes.length) { md += `## Notes\n`; notes.forEach((n) => { md += `### Note: ${n.content}\n${n.quote ? `> "${n.quote}"\n` : ''}*From: ${getSecTitle(n.sectionId)}*\n\n`; }); }
+    if (bookmarks.length) { md += `## Bookmarks\n`; bookmarks.forEach((b) => { md += `- **${getSecTitle(b.sectionId)}**\n`; }); }
+    navigator.clipboard.writeText(md);
+    setCopiedToast(true); setTimeout(() => setCopiedToast(false), 2500);
+  };
 
-  if (type === "highlight") {
-    return <Highlighter size={16} />;
-  }
-
-  if (type === "question") {
-    return <CircleHelp size={16} />;
-  }
-
-  return <Bookmark size={16} />;
-}
-
-export function ReviewMode({
-  document,
-  annotations,
-  onSelectSection,
-  onReturnToReading,
-  onToggleResolveQuestion,
-  onDeleteAnnotation,
-}: ReviewModeProps) {
-  const [filter, setFilter] =
-    useState<FilterType>("all");
-
-  const documentAnnotations = useMemo(
-    () =>
-      annotations.filter(
-        annotation =>
-          annotation.docId === document.id
-      ),
-    [annotations, document.id]
-  );
-
-  const filteredAnnotations = useMemo(() => {
-    if (filter === "all") {
-      return documentAnnotations;
-    }
-
-    return documentAnnotations.filter(
-      annotation => annotation.type === filter
-    );
-  }, [documentAnnotations, filter]);
-
-  const getSectionTitle = (sectionId: string) =>
-    document.sections.find(
-      section => section.id === sectionId
-    )?.title || "Unknown section";
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
-
-      if (event.key === "Tab") {
-        event.preventDefault();
-        return;
-      }
-
-      if (
-        event.key === "ArrowLeft" ||
-        event.key === "ArrowUp"
-      ) {
-        event.preventDefault();
-
-        setFilter(current => {
-          const filters: FilterType[] = [
-            "all",
-            "note",
-            "highlight",
-            "question",
-            "bookmark",
-          ];
-
-          const index = filters.indexOf(current);
-
-          return filters[
-            index <= 0
-              ? filters.length - 1
-              : index - 1
-          ];
-        });
-      }
-
-      if (
-        event.key === "ArrowRight" ||
-        event.key === "ArrowDown"
-      ) {
-        event.preventDefault();
-
-        setFilter(current => {
-          const filters: FilterType[] = [
-            "all",
-            "note",
-            "highlight",
-            "question",
-            "bookmark",
-          ];
-
-          const index = filters.indexOf(current);
-
-          return filters[
-            index >= filters.length - 1
-              ? 0
-              : index + 1
-          ];
-        });
-      }
-
-      if (event.key === "Enter") {
-        event.preventDefault();
-      }
-
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onReturnToReading();
-      }
-
-      if (event.key.toLowerCase() === "r") {
-        onReturnToReading();
-      }
-    };
-
-    window.addEventListener(
-      "keydown",
-      handleKeyDown
-    );
-
-    return () =>
-      window.removeEventListener(
-        "keydown",
-        handleKeyDown
-      );
-  }, [onReturnToReading]);
+  const stats: { type: AnnotationType; count: number; label: string; icon: React.ReactNode }[] = [
+    { type: 'highlight', count: highlights.length, label: 'Highlights', icon: <Highlighter size={18} className="text-emerald" /> },
+    { type: 'question', count: questions.length, label: `Questions (${unresolvedCount} Open)`, icon: <HelpCircle size={18} className="text-cyan" /> },
+    { type: 'note', count: notes.length, label: 'Notes', icon: <MessageSquare size={18} className="text-amber" /> },
+    { type: 'bookmark', count: bookmarks.length, label: 'Bookmarks', icon: <Bookmark size={18} className="text-rose" /> },
+  ];
 
   return (
-    <main className="library review-mode pixel-texture">
-      <div className="library-header">
-        <div>
-          <button
-            className="pixel-button"
-            onClick={onReturnToReading}
-            tabIndex={-1}
-          >
-            <ArrowLeft size={14} />
-            BACK TO READING
-          </button>
-
-          <h1
-            className="screen-title"
-            style={{ marginTop: 22 }}
-          >
-            REVIEW
-          </h1>
-
-          <p className="screen-subtitle">
-            {document.title} ·{" "}
-            {documentAnnotations.length} annotation
-            {documentAnnotations.length === 1
-              ? ""
-              : "s"}
-          </p>
-        </div>
-
-        <div className="library-header-key">
-          <span className="keyboard-key">R</span>
-          <span>READ</span>
-        </div>
-      </div>
-
-      <div
-        style={{
-          maxWidth: 1100,
-          margin: "0 auto 20px",
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 8,
-        }}
-      >
-        <button
-          className={`pixel-button ${
-            filter === "all"
-              ? "pixel-button-gold"
-              : ""
-          }`}
-          onClick={() => setFilter("all")}
-          tabIndex={-1}
-        >
-          ALL
-        </button>
-
-        <button
-          className={`pixel-button ${
-            filter === "note"
-              ? "pixel-button-gold"
-              : ""
-          }`}
-          onClick={() => setFilter("note")}
-          tabIndex={-1}
-        >
-          <MessageSquare size={14} />
-          NOTES
-        </button>
-
-        <button
-          className={`pixel-button ${
-            filter === "highlight"
-              ? "pixel-button-gold"
-              : ""
-          }`}
-          onClick={() =>
-            setFilter("highlight")
-          }
-          tabIndex={-1}
-        >
-          <Highlighter size={14} />
-          HIGHLIGHTS
-        </button>
-
-        <button
-          className={`pixel-button ${
-            filter === "question"
-              ? "pixel-button-gold"
-              : ""
-          }`}
-          onClick={() => setFilter("question")}
-          tabIndex={-1}
-        >
-          <CircleHelp size={14} />
-          QUESTIONS
-        </button>
-
-        <button
-          className={`pixel-button ${
-            filter === "bookmark"
-              ? "pixel-button-gold"
-              : ""
-          }`}
-          onClick={() => setFilter("bookmark")}
-          tabIndex={-1}
-        >
-          <Bookmark size={14} />
-          BOOKMARKS
-        </button>
-      </div>
-
-      <section
-        style={{
-          maxWidth: 1100,
-          margin: "0 auto",
-          display: "grid",
-          gap: 14,
-          paddingBottom: 80,
-        }}
-      >
-        {filteredAnnotations.length === 0 ? (
-          <div className="empty-state minecraft-border">
-            <div className="empty-state-title">
-              NO ANNOTATIONS YET
-            </div>
-
-            <div className="empty-state-text">
-              Add notes, highlights, questions or
-              bookmarks while reading.
+    <div className="review-mode-view" aria-label="Reading Review">
+      <div className="review-hero-card">
+        <div className="review-hero-top">
+          <div className="review-title-group">
+            <div className="review-badge-icon"><CheckSquare size={22} className="text-emerald" /></div>
+            <div>
+              <h1 className="review-hero-title">Reading Review</h1>
+              <p className="review-hero-sub">{document.title} • By {document.author}</p>
             </div>
           </div>
-        ) : (
-          filteredAnnotations.map(annotation => {
-            const isQuestion =
-              annotation.type === "question";
-
-            const resolved = Boolean(
-              annotation.resolved
-            );
-
-            return (
-              <article
-                key={annotation.id}
-                className={`margin-card ${
-                  annotation.type === "note"
-                    ? "margin-card-note"
-                    : ""
-                }`}
-                style={{
-                  opacity: resolved ? 0.65 : 1,
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent:
-                      "space-between",
-                    gap: 12,
-                    marginBottom: 10,
-                  }}
-                >
-                  <div
-                    className="margin-card-type"
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 7,
-                    }}
-                  >
-                    <AnnotationIcon
-                      type={annotation.type}
-                    />
-                    {labels[annotation.type]}
-                  </div>
-
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <button
-                      className="pixel-button"
-                      onClick={() =>
-                        onSelectSection(
-                          annotation.sectionId
-                        )
-                      }
-                      tabIndex={-1}
-                      title="Open section"
-                    >
-                      <FileText size={13} />
-                      OPEN
-                    </button>
-
-                    {isQuestion && (
-                      <button
-                        className="pixel-button"
-                        onClick={() =>
-                          onToggleResolveQuestion(
-                            annotation.id
-                          )
-                        }
-                        tabIndex={-1}
-                      >
-                        {resolved ? (
-                          <>
-                            <CheckCircle2
-                              size={13}
-                            />
-                            RESOLVED
-                          </>
-                        ) : (
-                          <>
-                            <Check size={13} />
-                            RESOLVE
-                          </>
-                        )}
-                      </button>
-                    )}
-
-                    <button
-                      className="pixel-button"
-                      onClick={() =>
-                        onDeleteAnnotation(
-                          annotation.id
-                        )
-                      }
-                      tabIndex={-1}
-                      title="Delete annotation"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    marginBottom: 8,
-                    color: "var(--text-muted)",
-                    fontSize: 10,
-                  }}
-                >
-                  {getSectionTitle(
-                    annotation.sectionId
-                  )}
-                </div>
-
-                {annotation.quote && (
-                  <div className="margin-card-quote">
-                    "{annotation.quote}"
-                  </div>
-                )}
-
-                {annotation.content && (
-                  <div className="margin-card-content">
-                    {annotation.content}
-                  </div>
-                )}
-
-                {!annotation.content &&
-                  !annotation.quote && (
-                    <div className="margin-card-content">
-                      {annotation.type ===
-                      "bookmark"
-                        ? "Saved location"
-                        : labels[
-                            annotation.type
-                          ]}
-                    </div>
-                  )}
-              </article>
-            );
-          })
-        )}
-      </section>
-
-      <div className="workspace-bottom-hud">
-        <span className="keyboard-key">
-          ↑
-        </span>
-        <span className="keyboard-key">
-          ↓
-        </span>
-        <span>FILTER</span>
-
-        <span className="keyboard-key">
-          ENTER
-        </span>
-        <span>SELECT</span>
-
-        <span className="keyboard-key">R</span>
-        <span>READ</span>
-
-        <span className="keyboard-key">
-          ESC
-        </span>
-        <span>BACK</span>
+          <div className="review-hero-actions">
+            <button type="button" className="btn btn-secondary" onClick={handleExportMarkdown} title="Copy formatted Markdown review">
+              {copiedToast ? <Check size={14} className="text-emerald" /> : <Copy size={14} />}
+              <span>{copiedToast ? 'Copied Markdown!' : 'Export Review'}</span>
+            </button>
+            <button type="button" className="btn btn-primary" onClick={onReturnToReading}>
+              <ArrowLeft size={15} /><span>Continue Reading</span><Kbd size="sm">Esc</Kbd>
+            </button>
+          </div>
+        </div>
+        <div className="review-stats-grid">
+          {stats.map((s) => (
+            <div key={s.type} className={`review-stat-card ${filter === s.type ? 'active-filter' : ''}`} onClick={() => setFilter(filter === s.type ? 'all' : s.type)}>
+              <div className="stat-card-icon">{s.icon}</div>
+              <div className="stat-card-info"><span className="stat-card-number">{s.count}</span><span className="stat-card-label">{s.label}</span></div>
+            </div>
+          ))}
+        </div>
       </div>
-    </main>
+
+      <div className="review-content-section">
+        <div className="review-filters-bar">
+          <div className="review-tab-pills">
+            <button type="button" className={`pill-btn ${filter === 'all' ? 'active' : ''}`} onClick={() => setFilter('all')}>All Items ({docAnns.length})</button>
+            {stats.map((s) => (
+              <button key={s.type} type="button" className={`pill-btn ${filter === s.type ? 'active' : ''}`} onClick={() => setFilter(s.type)}>
+                {s.type.charAt(0).toUpperCase() + s.type.slice(1)}s ({s.count})
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="review-items-stream">
+          {filtered.length === 0 ? (
+            <div className="review-empty-state">
+              <Sparkles size={32} className="text-muted" />
+              <h3>No annotations found for this filter</h3>
+              <p>Start reading and use shortcut keys to capture notes and questions.</p>
+              <button type="button" className="btn btn-primary" onClick={onReturnToReading}>Back to Document</button>
+            </div>
+          ) : filtered.map((item) => (
+            <article key={item.id} className={`review-entry-card entry-${item.type} ${item.resolved ? 'is-resolved' : ''}`}>
+              <div className="review-entry-top">
+                <div className="entry-type-pill">
+                  {item.type === 'highlight' && <Highlighter size={13} className="text-emerald" />}
+                  {item.type === 'question' && <HelpCircle size={13} className="text-cyan" />}
+                  {item.type === 'note' && <MessageSquare size={13} className="text-amber" />}
+                  {item.type === 'bookmark' && <Bookmark size={13} className="text-rose" />}
+                  <span className="entry-type-title">{item.type.toUpperCase()}</span>
+                </div>
+                <div className="entry-context-link" onClick={() => onSelectSection(item.sectionId)}>
+                  <BookOpen size={13} /><span>{getSecTitle(item.sectionId)}</span>
+                </div>
+                <div className="entry-actions-right">
+                  {item.type === 'question' && (
+                    <button type="button" className={`resolve-btn ${item.resolved ? 'resolved' : ''}`} onClick={() => onToggleResolveQuestion(item.id)}>
+                      {item.resolved ? <CheckCircle2 size={16} /> : <Check size={16} />}<span>{item.resolved ? 'Resolved' : 'Resolve'}</span>
+                    </button>
+                  )}
+                  <button type="button" className="btn btn-secondary btn-sm jump-btn" onClick={() => onSelectSection(item.sectionId)}>
+                    <CornerDownLeft size={13} /><span>Jump to context</span>
+                  </button>
+                  <button type="button" className="icon-btn delete-btn" onClick={() => onDeleteAnnotation(item.id)}><Trash2 size={14} /></button>
+                </div>
+              </div>
+              {item.quote && <div className="review-entry-quote"><p>"{item.quote}"</p></div>}
+              {item.content && <div className="review-entry-content"><p>{item.content}</p></div>}
+              <div className="review-entry-footer">
+                <span className="entry-timestamp">Saved {new Date(item.createdAt).toLocaleDateString()} at {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </div>
   );
-}
+};

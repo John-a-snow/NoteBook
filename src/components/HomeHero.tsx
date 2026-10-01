@@ -1,247 +1,114 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUp,
-  Moon,
-  Sun,
-} from "lucide-react";
-import type { ThemeMode } from "../types";
+import React, { useState, useEffect, useCallback } from 'react';
+import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Sun, Moon } from 'lucide-react';
+import type { ThemeMode } from '../types';
 
 interface HomeHeroProps {
-  theme: ThemeMode;
-  onToggleTheme: () => void;
-  onStartReading: () => void;
-  onOpenNewDoc: () => void;
-  onOpenLibrary: () => void;
-  onOpenShortcuts: () => void;
-  onOpenAbout: () => void;
+  theme: ThemeMode; onToggleTheme: () => void; onStartReading: () => void;
+  onOpenNewDoc: () => void; onOpenLibrary: () => void; onOpenShortcuts: () => void; onOpenAbout: () => void;
 }
+type FocusTarget = 'theme' | 'about' | 'enter' | 'newDoc' | 'library' | 'shortcuts';
 
-type Target =
-  | "theme"
-  | "about"
-  | "enter"
-  | "new"
-  | "library"
-  | "shortcuts";
+export const HomeHero: React.FC<HomeHeroProps> = ({
+  theme, onToggleTheme, onStartReading, onOpenNewDoc, onOpenLibrary, onOpenShortcuts, onOpenAbout,
+}) => {
+  const [selectedTarget, setSelectedTarget] = useState<FocusTarget>('enter');
 
-const targets: Target[] = [
-  "theme",
-  "about",
-  "enter",
-  "new",
-  "library",
-  "shortcuts",
-];
-
-export function HomeHero({
-  theme,
-  onToggleTheme,
-  onStartReading,
-  onOpenNewDoc,
-  onOpenLibrary,
-  onOpenShortcuts,
-  onOpenAbout,
-}: HomeHeroProps) {
-  const [selected, setSelected] = useState(2);
-
-  const activate = useCallback(
-    (target: Target) => {
-      if (target === "theme") onToggleTheme();
-      if (target === "about") onOpenAbout();
-      if (target === "enter") onStartReading();
-      if (target === "new") onOpenNewDoc();
-      if (target === "library") onOpenLibrary();
-      if (target === "shortcuts") onOpenShortcuts();
-    },
-    [
-      onToggleTheme,
-      onOpenAbout,
-      onStartReading,
-      onOpenNewDoc,
-      onOpenLibrary,
-      onOpenShortcuts,
-    ]
-  );
+  const executeTarget = useCallback((target: FocusTarget) => {
+    if (target === 'theme') onToggleTheme();
+    else if (target === 'about') onOpenAbout();
+    else if (target === 'enter') onStartReading();
+    else if (target === 'newDoc') onOpenNewDoc();
+    else if (target === 'library') onOpenLibrary();
+    else if (target === 'shortcuts') onOpenShortcuts();
+  }, [onToggleTheme, onOpenAbout, onStartReading, onOpenNewDoc, onOpenLibrary, onOpenShortcuts]);
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
-
-      if (event.key === "Tab") {
-        event.preventDefault();
-        return;
-      }
-
-      if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-        event.preventDefault();
-        setSelected((value) => (value - 1 + targets.length) % targets.length);
-      }
-
-      if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-        event.preventDefault();
-        setSelected((value) => (value + 1) % targets.length);
-      }
-
-      if (event.key === "Enter") {
-        event.preventDefault();
-        activate(targets[selected]);
-      }
-
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setSelected(2);
-      }
-
-      const key = event.key.toLowerCase();
-
-      if (key === "t") {
-        onToggleTheme();
-      }
-
-      if (key === "n") {
-        onOpenNewDoc();
-      }
-
-      if (key === "l") {
-        onOpenLibrary();
-      }
-
-      if (key === "?") {
-        onOpenShortcuts();
-      }
-
-      if (key === "a") {
-        onOpenAbout();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.querySelector('[role="dialog"]')) return;
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+      if (e.key === 'ArrowUp') {
+        e.preventDefault(); e.stopPropagation();
+        setSelectedTarget((p) => (p === 'newDoc' || p === 'library' || p === 'shortcuts' ? 'enter' : 'about'));
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault(); e.stopPropagation();
+        setSelectedTarget((p) => (p === 'about' || p === 'theme' ? 'enter' : p === 'enter' ? 'library' : p));
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault(); e.stopPropagation();
+        setSelectedTarget((p) => p === 'about' ? 'theme' : p === 'theme' ? 'enter' : p === 'enter' ? 'newDoc' : p === 'shortcuts' ? 'library' : p === 'library' ? 'newDoc' : 'shortcuts');
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault(); e.stopPropagation();
+        setSelectedTarget((p) => p === 'theme' ? 'about' : p === 'about' ? 'about' : p === 'enter' ? 'shortcuts' : p === 'newDoc' ? 'library' : p === 'library' ? 'shortcuts' : 'newDoc');
+      } else if (e.key === 'Enter') {
+        e.preventDefault(); e.stopPropagation();
+        executeTarget(selectedTarget);
       }
     };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [selectedTarget, executeTarget]);
 
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [
-    activate,
-    selected,
-    onToggleTheme,
-    onOpenNewDoc,
-    onOpenLibrary,
-    onOpenShortcuts,
-    onOpenAbout,
-  ]);
-
-  const buttonClass = (target: Target) =>
-    `pixel-button ${
-      targets[selected] === target ? "keyboard-focus" : ""
-    }`;
+  const cmds: { id: FocusTarget; key: string; label: string; action: () => void }[] = [
+    { id: 'newDoc', key: 'N', label: 'New Doc', action: onOpenNewDoc },
+    { id: 'library', key: 'L', label: 'Library', action: onOpenLibrary },
+    { id: 'shortcuts', key: '?', label: 'Keyboard', action: onOpenShortcuts },
+  ];
 
   return (
-    <main className="home-hero pixel-texture">
+    <div className="home-hero" tabIndex={-1}>
+      <div className="home-pixel-overlay" aria-hidden="true" />
+      <div className="home-topbar-left">
+        <div className="home-bookmark-brand" title="NOTEBOOK Edition"><span className="home-bookmark-text">NOTEBOOK</span></div>
+      </div>
       <div className="home-topbar">
-        <button
-          className={buttonClass("theme")}
-          onClick={onToggleTheme}
-          tabIndex={-1}
-          aria-label="Toggle theme"
-        >
-          {theme === "light" ? <Sun size={15} /> : <Moon size={15} />}
-          {theme === "light" ? "DAY" : "NIGHT"}
+        <button type="button" tabIndex={-1} className={`home-theme-btn ${theme === 'light' ? 'is-day-mode' : 'is-night-mode'} ${selectedTarget === 'theme' ? 'is-arrow-selected' : ''}`}
+          onClick={() => { setSelectedTarget('theme'); onToggleTheme(); }} onMouseEnter={() => setSelectedTarget('theme')}
+          aria-label={`Toggle Minecraft ${theme === 'light' ? 'Night (Dark)' : 'Day (Light)'} Mode`} title="Cycle Day / Night Mode [T]">
+          {theme === 'light' ? <><Sun size={13} className="home-theme-icon" /><span>DAY</span></> : <><Moon size={13} className="home-theme-icon" /><span>NIGHT</span></>}
+          <span className="home-about-key">T</span>
+          {selectedTarget === 'theme' && <span className="mc-arrow-cursor">◄</span>}
         </button>
-
-        <button
-          className={buttonClass("about")}
-          onClick={onOpenAbout}
-          tabIndex={-1}
-        >
-          A · ABOUT
+        <button type="button" tabIndex={-1} className={`home-about-btn ${selectedTarget === 'about' ? 'is-arrow-selected' : ''}`}
+          onClick={() => { setSelectedTarget('about'); onOpenAbout(); }} onMouseEnter={() => setSelectedTarget('about')} aria-label="About NOTEBOOK">
+          ABOUT <span className="home-about-key">A</span>
+          {selectedTarget === 'about' && <span className="mc-arrow-cursor">◄</span>}
         </button>
       </div>
-
-      <section className="home-center">
-        <div className="home-logo">
-          <div className="home-logo-block">
-            <span>N</span>
-          </div>
-
-          <div>
-            <h1 className="home-title">NOTEBOOK</h1>
-            <p className="home-subtitle">KEYBOARD EDITION</p>
+      <div className="home-center">
+        <div className="home-logo-wrap">
+          <h1 className="minecraft-stone-title">NOTEBOOK</h1>
+          <div className="minecraft-subtitle-container">
+            <div className="minecraft-gold-subtitle">KEYBOARD EDITION</div>
+            <div className="minecraft-splash-tag">MOUSE? NOT REQUIRED.</div>
           </div>
         </div>
-
-        <div className="minecraft-divider" />
-
-        <p className="home-tagline">
-          READ. THINK. ANNOTATE.
-        </p>
-
-        <p className="home-warning">
-          MOUSE? NOT REQUIRED.
-        </p>
-
-        <button
-          className={buttonClass("enter") + " home-enter"}
-          onClick={onStartReading}
-          tabIndex={-1}
-        >
-          <span>ENTER WORKSPACE</span>
-          <span className="keyboard-key">ENTER</span>
-        </button>
-
-        <div className="home-actions">
-          <button
-            className={buttonClass("new")}
-            onClick={onOpenNewDoc}
-            tabIndex={-1}
-          >
-            N · NEW
-          </button>
-
-          <button
-            className={buttonClass("library")}
-            onClick={onOpenLibrary}
-            tabIndex={-1}
-          >
-            L · LIBRARY
-          </button>
-
-          <button
-            className={buttonClass("shortcuts")}
-            onClick={onOpenShortcuts}
-            tabIndex={-1}
-          >
-            ? · SHORTCUTS
+        <p className="home-tagline"><span className="home-tagline-text">READ WITHOUT LOSING YOUR THOUGHTS</span></p>
+        <div className="home-enter-cta">
+          <button type="button" tabIndex={-1} className={`mc-enter-btn ${selectedTarget === 'enter' ? 'is-arrow-selected' : ''}`}
+            onClick={() => { setSelectedTarget('enter'); onStartReading(); }} onMouseEnter={() => setSelectedTarget('enter')}>
+            {selectedTarget === 'enter' && <span className="mc-arrow-cursor-left">►</span>}
+            ↵ Enter Workspace
+            {selectedTarget === 'enter' && <span className="mc-arrow-cursor-right">◄</span>}
           </button>
         </div>
-      </section>
-
-      <div className="home-hud">
-        <span className="keyboard-key">
-          <ArrowUp size={11} />
-        </span>
-        <span className="keyboard-key">
-          <ArrowDown size={11} />
-        </span>
-        <span className="keyboard-key">
-          <ArrowLeft size={11} />
-        </span>
-        <span className="keyboard-key">
-          <ArrowRight size={11} />
-        </span>
-        <span>NAVIGATE</span>
-        <span className="keyboard-key">ENTER</span>
-        <span>SELECT</span>
-        <span className="keyboard-key">ESC</span>
-        <span>BACK</span>
       </div>
-    </main>
+      <nav className="home-cmdbar" aria-label="Keyboard commands">
+        {cmds.map((cmd) => (
+          <button key={cmd.key} type="button" tabIndex={-1} className={`mc-nav-btn ${selectedTarget === cmd.id ? 'is-arrow-selected' : ''}`}
+            onClick={() => { setSelectedTarget(cmd.id); cmd.action(); }} onMouseEnter={() => setSelectedTarget(cmd.id)}>
+            <span className="mc-nav-key">{cmd.key}</span><span className="mc-nav-label">{cmd.label}</span>
+            {selectedTarget === cmd.id && <span className="mc-arrow-dot" />}
+          </button>
+        ))}
+      </nav>
+      <div className="home-arrow-hud" aria-live="polite">
+        <span className="hud-arrow-keys">
+          <ArrowUp size={11} strokeWidth={3.5} className="hud-arrow-icon" /><ArrowDown size={11} strokeWidth={3.5} className="hud-arrow-icon" />
+          <ArrowLeft size={11} strokeWidth={3.5} className="hud-arrow-icon" /><ArrowRight size={11} strokeWidth={3.5} className="hud-arrow-icon" />
+        </span>
+        <span className="hud-arrow-label">USE ARROWS TO NAVIGATE</span><span className="hud-arrow-divider">•</span>
+        <span className="hud-enter-key">↵ ENTER</span><span className="hud-enter-label">TO SELECT</span>
+      </div>
+    </div>
   );
-}
+};
