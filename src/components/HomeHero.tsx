@@ -62,14 +62,14 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
       </div>
       <div className="home-topbar">
         <button type="button" tabIndex={-1} className={`home-theme-btn ${theme === 'light' ? 'is-day-mode' : 'is-night-mode'} ${selectedTarget === 'theme' ? 'is-arrow-selected' : ''}`}
-          onClick={() => { setSelectedTarget('theme'); onToggleTheme(); }} onMouseEnter={() => setSelectedTarget('theme')}
+          onClick={() => { setSelectedTarget('theme'); onToggleTheme(); }}
           aria-label={`Toggle Minecraft ${theme === 'light' ? 'Night (Dark)' : 'Day (Light)'} Mode`} title="Cycle Day / Night Mode [T]">
           {theme === 'light' ? <><Sun size={13} className="home-theme-icon" /><span>DAY</span></> : <><Moon size={13} className="home-theme-icon" /><span>NIGHT</span></>}
           <span className="home-about-key">T</span>
           {selectedTarget === 'theme' && <span className="mc-arrow-cursor">◄</span>}
         </button>
         <button type="button" tabIndex={-1} className={`home-about-btn ${selectedTarget === 'about' ? 'is-arrow-selected' : ''}`}
-          onClick={() => { setSelectedTarget('about'); onOpenAbout(); }} onMouseEnter={() => setSelectedTarget('about')} aria-label="About NOTEBOOK">
+          onClick={() => { setSelectedTarget('about'); onOpenAbout(); }} aria-label="About NOTEBOOK">
           ABOUT <span className="home-about-key">A</span>
           {selectedTarget === 'about' && <span className="mc-arrow-cursor">◄</span>}
         </button>
@@ -78,14 +78,13 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
         <div className="home-logo-wrap">
           <h1 className="minecraft-stone-title">NOTEBOOK</h1>
           <div className="minecraft-subtitle-container">
-            <div className="minecraft-gold-subtitle">KEYBOARD EDITION</div>
-            <div className="minecraft-splash-tag">MOUSE? NOT REQUIRED.</div>
+            <div className="minecraft-gold-subtitle">KEYBOARD ONLY EDITION</div>
           </div>
         </div>
         <p className="home-tagline"><span className="home-tagline-text">READ WITHOUT LOSING YOUR THOUGHTS</span></p>
         <div className="home-enter-cta">
           <button type="button" tabIndex={-1} className={`mc-enter-btn ${selectedTarget === 'enter' ? 'is-arrow-selected' : ''}`}
-            onClick={() => { setSelectedTarget('enter'); onStartReading(); }} onMouseEnter={() => setSelectedTarget('enter')}>
+            onClick={() => { setSelectedTarget('enter'); onStartReading(); }}>
             {selectedTarget === 'enter' && <span className="mc-arrow-cursor-left">►</span>}
             ↵ Enter Workspace
             {selectedTarget === 'enter' && <span className="mc-arrow-cursor-right">◄</span>}
@@ -95,7 +94,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
       <nav className="home-cmdbar" aria-label="Keyboard commands">
         {cmds.map((cmd) => (
           <button key={cmd.key} type="button" tabIndex={-1} className={`mc-nav-btn ${selectedTarget === cmd.id ? 'is-arrow-selected' : ''}`}
-            onClick={() => { setSelectedTarget(cmd.id); cmd.action(); }} onMouseEnter={() => setSelectedTarget(cmd.id)}>
+            onClick={() => { setSelectedTarget(cmd.id); cmd.action(); }}>
             <span className="mc-nav-key">{cmd.key}</span><span className="mc-nav-label">{cmd.label}</span>
             {selectedTarget === cmd.id && <span className="mc-arrow-dot" />}
           </button>

@@ -76,10 +76,10 @@ export const AboutModal: React.FC<{ isOpen: boolean; onClose: () => void; onStar
         <div className="mc-about-footer">
           <span className="mc-about-footer-hint">[← →] SELECT • [ESC] CLOSE • [ENTER] CONFIRM</span>
           <div className="mc-about-actions">
-            <button type="button" className={`mc-about-btn btn-stone ${selectedBtn === 'close' ? 'is-arrow-selected' : ''}`} onClick={onClose} onMouseEnter={() => setSelectedBtn('close')}>
+            <button type="button" className={`mc-about-btn btn-stone ${selectedBtn === 'close' ? 'is-arrow-selected' : ''}`} onClick={onClose}>
               ESC CLOSE {selectedBtn === 'close' && <span className="mc-arrow-cursor">◄</span>}
             </button>
-            <button type="button" className={`mc-about-btn btn-green ${selectedBtn === 'start' ? 'is-arrow-selected' : ''}`} onClick={() => { onClose(); onStartReading(); }} onMouseEnter={() => setSelectedBtn('start')}>
+            <button type="button" className={`mc-about-btn btn-green ${selectedBtn === 'start' ? 'is-arrow-selected' : ''}`} onClick={() => { onClose(); onStartReading(); }}>
               START READING ↵ {selectedBtn === 'start' && <span className="mc-arrow-cursor">◄</span>}
             </button>
           </div>
@@ -235,7 +235,7 @@ export const SearchModal: React.FC<{ isOpen: boolean; document: Document; onSele
             <div className="search-empty-state"><p>No matches found for "{query}"</p><span className="empty-sub">Try searching for keywords, concepts, or author names.</span></div>
           ) : matches.map((m, idx) => (
             <div key={`${m.sectionId}-${idx}`} className={`search-result-item ${idx === selectedIndex ? 'active' : ''}`}
-              onClick={() => { onSelectMatch(m.sectionId); onClose(); }} onMouseEnter={() => setSelectedIndex(idx)}>
+              onClick={() => { onSelectMatch(m.sectionId); onClose(); }}>
               <div className="search-result-header"><span className="search-result-section">{m.sectionTitle}</span>{idx === selectedIndex && <span className="search-result-jump-badge"><CornerDownLeft size={12} /> Jump</span>}</div>
               <p className="search-result-snippet">{m.snippet}</p>
             </div>
@@ -297,7 +297,7 @@ export const CommandPalette: React.FC<{
           </div>
           <div className="palette-list" ref={listRef}>
             {filtered.length === 0 ? <div className="palette-empty">No commands match "{query}"</div> : filtered.map((item, idx) => (
-              <div key={item.id} className={`palette-item ${idx === selectedIndex ? 'active' : ''}`} onClick={() => { item.perform(); onClose(); }} onMouseEnter={() => setSelectedIndex(idx)}>
+              <div key={item.id} className={`palette-item ${idx === selectedIndex ? 'active' : ''}`} onClick={() => { item.perform(); onClose(); }}>
                 <div className="palette-item-icon">{item.icon}</div>
                 <div className="palette-item-text">
                   <div className="palette-item-title-row"><span className="palette-item-title">{item.title}</span><span className="palette-item-category">{item.category}</span></div>
